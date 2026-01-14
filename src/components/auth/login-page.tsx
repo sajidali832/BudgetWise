@@ -34,17 +34,19 @@ import { PiggyBank, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const signUpSchema = z.object({
-  email: z.string().email(),
+  email: z.string().email({ message: 'Invalid email address.' }),
   password: z.string().min(6, 'Password must be at least 6 characters.'),
 });
 
 const signInSchema = z.object({
-  email: z.string().email(),
+  email: z.string().email({ message: 'Invalid email address.' }),
   password: z.string().min(1, 'Password is required.'),
 });
 
+type LoadingState = 'signin' | 'signup' | 'guest' | false;
+
 export default function LoginPage() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<LoadingState>(false);
   const [activeTab, setActiveTab] = useState('signin');
   const auth = useAuth();
   const { toast } = useToast();
@@ -59,46 +61,66 @@ export default function LoginPage() {
     defaultValues: { email: '', password: '' },
   });
 
+  const handleAuthError = (error: any, title: string) => {
+    let description = 'An unexpected error occurred. Please try again.';
+    // Firebase provides structured error codes.
+    switch (error.code) {
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+        description = 'Invalid email or password. Please check your credentials and try again.';
+        break;
+      case 'auth/email-already-in-use':
+        description = 'This email address is already in use by another account.';
+        break;
+      case 'auth/invalid-email':
+        description = 'The email address is not valid. Please enter a correct email.';
+        break;
+      case 'auth/weak-password':
+        description = 'The password is too weak. It must be at least 6 characters long.';
+        break;
+      default:
+        // You can log the original error for debugging if needed
+        console.error(`${title} Error:`, error);
+        break;
+    }
+    toast({
+      variant: 'destructive',
+      title: title,
+      description: description,
+    });
+  }
+
   const handleSignIn = async (values: z.infer<typeof signInSchema>) => {
-    setLoading(true);
+    if (!auth) return;
+    setLoading('signin');
     try {
       await initiateEmailSignIn(auth, values.email, values.password);
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Sign In Failed',
-        description: error.message,
-      });
+      handleAuthError(error, 'Sign In Failed');
     } finally {
       setLoading(false);
     }
   };
 
   const handleSignUp = async (values: z.infer<typeof signUpSchema>) => {
-    setLoading(true);
+    if (!auth) return;
+    setLoading('signup');
     try {
       await initiateEmailSignUp(auth, values.email, values.password);
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Sign Up Failed',
-        description: error.message,
-      });
+      handleAuthError(error, 'Sign Up Failed');
     } finally {
       setLoading(false);
     }
   };
 
   const handleGuestSignIn = async () => {
-    setLoading(true);
+    if (!auth) return;
+    setLoading('guest');
     try {
       await initiateAnonymousSignIn(auth);
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Guest Sign In Failed',
-        description: error.message,
-      });
+      handleAuthError(error, 'Guest Sign In Failed');
     } finally {
       setLoading(false);
     }
@@ -162,8 +184,8 @@ export default function LoginPage() {
                   />
                 </CardContent>
                 <CardFooter className="flex flex-col gap-4">
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? (
+                  <Button type="submit" className="w-full" disabled={!!loading}>
+                    {loading === 'signin' ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : null}
                     Sign In
@@ -220,8 +242,8 @@ export default function LoginPage() {
                   />
                 </CardContent>
                 <CardFooter className="flex flex-col gap-4">
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? (
+                  <Button type="submit" className="w-full" disabled={!!loading}>
+                    {loading === 'signup' ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : null}
                     Sign Up
@@ -237,10 +259,10 @@ export default function LoginPage() {
           <Button
             variant="link"
             onClick={handleGuestSignIn}
-            disabled={loading}
+            disabled={!!loading}
             className="mt-2"
           >
-             {loading && activeTab !== 'signin' && activeTab !== 'signup' ? (
+             {loading === 'guest' ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : null}
             Continue as Guest
@@ -248,4 +270,5 @@ export default function LoginPage() {
         </div>
     </div>
   );
-}
+
+    
