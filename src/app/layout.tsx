@@ -27,8 +27,8 @@ export default function RootLayout({
           {children}
         </FirebaseClientProvider>
         <Toaster />
-        <Script id="monetag-popunder">
-          {`(function(s){s.dataset.zone='10464748',s.src='https://al5sm.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`}
+        <Script id="monetag-vignette">
+          {`(function(s){s.dataset.zone='10464785',s.src='https://gizokraijaw.net/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`}
         </Script>
       </body>
     </html>
