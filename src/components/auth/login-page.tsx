@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PiggyBank, Loader2 } from 'lucide-react';
+import { Landmark, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const signUpSchema = z.object({
@@ -129,7 +129,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="mb-8 flex items-center gap-2 text-primary">
-        <PiggyBank className="h-8 w-8" />
+        <Landmark className="h-8 w-8" />
         <h1 className="text-3xl font-bold">BudgetWise</h1>
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full max-w-md">

@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { useUser, useAuth } from "@/firebase";
-import { LogOut, PiggyBank } from "lucide-react";
+import { LogOut, Landmark } from "lucide-react";
 import { Button } from "../ui/button";
 
 export function MainSidebar() {
@@ -30,7 +30,7 @@ export function MainSidebar() {
     <>
       <SidebarHeader>
         <div className="flex items-center gap-2">
-            <PiggyBank className="size-7 text-primary transition-transform duration-300 group-data-[collapsible=icon]:-rotate-12" />
+            <Landmark className="size-7 text-primary transition-transform duration-300 group-data-[collapsible=icon]:-rotate-12" />
             <h1 className="font-headline text-xl font-bold tracking-tight text-foreground transition-opacity duration-300 group-data-[collapsible=icon]:opacity-0">
                 BudgetWise
             </h1>

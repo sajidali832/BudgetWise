@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { AddTransactionDialog } from "./add-transaction-dialog";
-import { LogOut, PiggyBank, PlusCircle } from "lucide-react";
+import { LogOut, Landmark, PlusCircle } from "lucide-react";
 import { useAuth } from "@/firebase";
 import { useSidebar } from "../ui/sidebar";
 
@@ -14,7 +14,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:px-6">
       {children}
       <div className="hidden items-center gap-2 md:flex">
-        <PiggyBank className="h-6 w-6 text-primary" />
+        <Landmark className="h-6 w-6 text-primary" />
         <h1 className="font-headline text-xl font-bold tracking-tight text-foreground">
           BudgetWise
         </h1>
