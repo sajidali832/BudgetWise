@@ -1,0 +1,160 @@
+/**
+ * This ruleset enforces a strict user-ownership model for a personal finance application.
+ *
+ * Core Philosophy:
+ * All user-generated content, including transactions, and categories, is considered
+ * private and is accessible only by the user who created it. There is no concept of
+ * public data or shared access in this model.
+ *
+ * Data Structure:
+ * All data is hierarchically organized and siloed under a user-specific path:
+ * `/users/{userId}`. This path-based ownership is the cornerstone of the security
+ * model, ensuring that a user's queries and operations are naturally confined to
+ * their own data tree.
+ *
+ * Key Security Decisions:
+ * - User Isolation: Users can only read and write data within their own `/users/{userId}`
+ *   path. Access to other users' data is strictly forbidden.
+ * - No User Listing: To protect user privacy, it is impossible to list all documents
+ *   in the top-level `/users` collection.
+ * - Default Deny: Any operation not explicitly permitted is denied.
+ *
+ * Denormalization for Authorization:
+ * The security model relies entirely on path-based ownership. The user's ID (`userId`)
+ * is part of the document path (e.g., `/users/{userId}/transactions/{transactionId}`). This
+ * avoids the need for any slow or costly `get()` calls to other documents to verify
+ * ownership, resulting in fast, efficient, and simple authorization checks. Furthermore,
+ * documents within subcollections contain a `userId` field, which is validated against
+ * the path to ensure relational integrity.
+ *
+ * Structural Segregation:
+ * User data is segregated into distinct subcollections (`transactions`, `categories`)
+ * under their main user document. This ensures a homogeneous security posture for
+ * each type of data, simplifying the rules and preventing accidental data exposure.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --------------------------------------------------------------------
+    // Helper Functions
+    // --------------------------------------------------------------------
+
+    /**
+     * Checks if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently signed-in user's UID matches the requested document owner's ID.
+     * This is the primary function for enforcing the user-ownership model.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * For update/delete operations, verifies both ownership and that the document actually exists.
+     * This prevents unauthorized changes to non-existent documents.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * On create, validates that the user document's internal `id` field matches the
+     * document ID from the path, ensuring relational integrity.
+     */
+    function hasValidUserDataForCreate(userId) {
+      return request.resource.data.id == userId;
+    }
+
+    /**
+     * On update, ensures the user document's `id` field is immutable and cannot be changed.
+     */
+    function isUserDataImmutable() {
+      return request.resource.data.id == resource.data.id;
+    }
+
+    /**
+     * On create, validates that a subcollection document's internal `userId` field
+     * matches the `userId` from the path, linking it correctly to its owner.
+     */
+    function hasValidOwnerFieldForCreate(userId) {
+      return request.resource.data.userId == userId;
+    }
+
+    /**
+     * On update, ensures a subcollection document's `userId` field is immutable.
+     */
+    function isOwnerFieldImmutable() {
+      return request.resource.data.userId == resource.data.userId;
+    }
+
+    // --------------------------------------------------------------------
+    // Collection Rules
+    // --------------------------------------------------------------------
+
+    /**
+     * @description Manages user profile documents.
+     * @path /users/{userId}
+     * @allow (create) An authenticated user creating their own user document for the first time.
+     * @deny (list) An authenticated user attempting to list all users in the system.
+     * @principle Restricts access to a user's own data tree and enforces self-creation.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && hasValidUserDataForCreate(userId);
+      allow update: if isExistingOwner(userId) && isUserDataImmutable();
+      allow delete: if isExistingOwner(userId);
+
+      /**
+       * @description Manages a user's private transaction records.
+       * @path /users/{userId}/transactions/{transactionId}
+       * @allow (create) An authenticated user adding a new transaction record to their own account.
+       * @deny (get) An authenticated user attempting to read a transaction record from another user's account.
+       * @principle Enforces strict document ownership within a user's data silo.
+       */
+      match /transactions/{transactionId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && hasValidOwnerFieldForCreate(userId);
+        allow update: if isExistingOwner(userId) && isOwnerFieldImmutable();
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Manages a user's private spending categories.
+       * @path /users/{userId}/categories/{categoryId}
+       * @allow (delete) An authenticated user deleting one of their own custom categories.
+       * @deny (create) An authenticated user attempting to create a category under another user's account.
+       * @principle Enforces strict document ownership within a user's data silo.
+       */
+      match /categories/{categoryId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && hasValidOwnerFieldForCreate(userId);
+        allow update: if isExistingOwner(userId) && isOwnerFieldImmutable();
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Manages a user's private budget limits.
+       * @path /users/{userId}/budgets/{budgetId}
+       * @allow (list, get) An authenticated user reading their own budget data.
+       * @allow (create, update) An authenticated user setting or updating their own budgets.
+       * @principle Enforces strict document ownership for budget information.
+       */
+      match /budgets/{budgetId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update: if isExistingOwner(userId);
+        allow delete: if isExistingOwner(userId);
+      }
+    }
+  }
+}

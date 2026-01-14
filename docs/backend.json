@@ -1,0 +1,192 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user account in the BudgetWise application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "User's first name."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "User's last name."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "firstName",
+        "lastName",
+        "createdAt"
+      ]
+    },
+    "Transaction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Transaction",
+      "type": "object",
+      "description": "Represents an income or expense transaction.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the transaction."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Transaction)"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of transaction.",
+          "enum": [
+            "income",
+            "expense"
+          ]
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Reference to Category. (Relationship: Category 1:N Transaction)"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Amount of the transaction."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of the transaction.",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the transaction."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "type",
+        "categoryId",
+        "amount",
+        "date",
+        "description"
+      ]
+    },
+    "Category": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Category",
+      "type": "object",
+      "description": "Represents a category for income and expenses.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the category."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Category)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the category (e.g., 'Groceries', 'Salary')."
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of the category, either 'income' or 'expense'."
+        },
+        "budgetLimit": {
+          "type": "number",
+          "description": "Monthly budget limit for this category."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "type"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user account information.  Path-based ownership simplifies security rules.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/transactions/{transactionId}",
+        "definition": {
+          "entityName": "Transaction",
+          "schema": {
+            "$ref": "#/backend/entities/Transaction"
+          },
+          "description": "Stores transactions for a specific user. Path-based ownership ensures data isolation and secure access.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "transactionId",
+              "description": "The unique identifier of the transaction."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/categories/{categoryId}",
+        "definition": {
+          "entityName": "Category",
+          "schema": {
+            "$ref": "#/backend/entities/Category"
+          },
+          "description": "Stores categories for a specific user. Path-based ownership ensures data isolation and secure access.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "categoryId",
+              "description": "The unique identifier of the category."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure data security, scalability, and ease of debugging, particularly for mobile optimization as requested. It leverages path-based ownership and denormalization to avoid complex queries and maintain authorization independence.\n\n*   **Authorization Independence:** User-owned data (transactions, and categories) is stored under the `/users/{userId}` path, eliminating the need for `get()` calls in security rules.  This allows atomic operations and simplifies rule logic. All data related to a specific user is contained within their own document path. This avoids any cross-document reads for authorization, greatly simplifying security rules and improving performance.\n*   **QAPs (Rules are not Filters):**  Each collection (`transactions`, `categories`) contains only documents relevant to the specified user, enabling secure `list` operations. Unauthorized data cannot be listed because it resides in different user paths. By storing each users data separately, listing expenses for a specific user only requires reading from `/users/{userId}/transactions/{transactionId}`, and not filtering across different users data.\n*   **Data Segregation:**  Each user's data is isolated, with dedicated collections for transactions, and categories. This segregation ensures that each collection maintains a homogeneous security posture, simplifying security rules.\n*   **Path-Based Ownership:** The structure `/users/{userId}/transactions/{transactionId}` and `/users/{userId}/categories/{categoryId}` clearly establishes ownership.  This eliminates the need for complex authorization logic. All data related to a particular user resides in the user's path, which makes it simpler to define ownership based security rules.\n\nThis design supports the core features of BudgetWise, including logging transactions, viewing breakdowns, setting budgets, and displaying financial summaries, while also allowing secure and efficient mobile access and offline data persistence."
+  }
+}
